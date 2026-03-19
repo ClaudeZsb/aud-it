@@ -5,6 +5,7 @@ A GitHub App webhook service that automatically reviews pull requests targeting 
 ## What it does
 
 - Listens for pull request events from a GitHub App
+- Listens for PR comment commands such as `/audit review` and `/audit ask ...`
 - Ignores non-`main` PRs by default
 - Fetches changed files and patches from GitHub
 - Filters low-signal files like lockfiles and build output
@@ -20,10 +21,12 @@ Recommended permissions:
 
 - Repository permissions:
   - `Contents: Read-only`
+  - `Issues: Read and write`
   - `Pull requests: Read and write`
   - `Metadata: Read-only`
 - Subscribe to events:
   - `Pull request`
+  - `Issue comment`
 
 Set the webhook URL to your deployed bot endpoint:
 
@@ -72,6 +75,18 @@ By default the bot:
 - reviews only PRs whose base branch is `main`
 - comments even on clean PRs so the team can see it ran
 - posts inline comments only for high-confidence findings that can be anchored to added lines in the diff
+
+## Comment commands
+
+In the main PR conversation, the bot also supports:
+
+- `/audit help`
+- `/audit review`
+- `/audit review force`
+- `/audit summary`
+- `/audit ask <question>`
+
+The `ask` command answers from the current PR diff plus the latest stored review state. This first version supports top-level PR comments, not inline review threads.
 
 ## Deployment notes
 

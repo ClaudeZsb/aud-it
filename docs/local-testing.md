@@ -36,10 +36,12 @@ Create a GitHub App with:
 
 - Repository permissions:
   - `Contents: Read-only`
+  - `Issues: Read and write`
   - `Pull requests: Read and write`
   - `Metadata: Read-only`
 - Subscribe to:
   - `Pull request`
+  - `Issue comment`
 - Webhook URL:
   - local dev tunnel URL + `/webhooks/github`
 - Webhook secret:
@@ -93,6 +95,10 @@ Then paste the public URL into the GitHub App webhook config:
 5. Confirm the PR receives:
    - one review summary
    - zero or more inline comments
+6. Add a PR conversation comment such as:
+   - `/audit help`
+   - `/audit summary`
+   - `/audit ask what is the riskiest part of this PR?`
 
 ## Replay a webhook locally
 

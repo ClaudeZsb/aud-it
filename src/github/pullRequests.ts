@@ -1,8 +1,45 @@
 import type { Octokit } from 'octokit';
 
 import { parsePersistedReviewState } from '../review/format.js';
-import type { PullRequestFile } from '../types/github.js';
+import type { PullRequestDetails, PullRequestFile } from '../types/github.js';
 import type { InlineReviewComment, PersistedReviewState } from '../types/review.js';
+
+export async function getPullRequest(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  pullNumber: number,
+): Promise<PullRequestDetails> {
+  const response = await octokit.rest.pulls.get({
+    owner,
+    repo,
+    pull_number: pullNumber,
+  });
+
+  const pullRequest = response.data;
+
+  return {
+    number: pullRequest.number,
+    title: pullRequest.title,
+    body: pullRequest.body,
+    html_url: pullRequest.html_url,
+    draft: Boolean(pullRequest.draft),
+    state: pullRequest.state,
+    base: {
+      ref: pullRequest.base.ref,
+      sha: pullRequest.base.sha,
+    },
+    head: {
+      ref: pullRequest.head.ref,
+      sha: pullRequest.head.sha,
+      repo: pullRequest.head.repo ? { full_name: pullRequest.head.repo.full_name } : null,
+    },
+    user: {
+      login: pullRequest.user?.login ?? 'unknown',
+      type: pullRequest.user?.type,
+    },
+  };
+}
 
 export async function listPullRequestFiles(
   octokit: Octokit,
@@ -148,4 +185,19 @@ export async function createPullRequestReview(
       body: `${body}\n\n_Inline comments were omitted because GitHub could not anchor them to the current diff._`,
     });
   }
+}
+
+export async function createIssueComment(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  body: string,
+): Promise<void> {
+  await octokit.rest.issues.createComment({
+    owner,
+    repo,
+    issue_number: issueNumber,
+    body,
+  });
 }

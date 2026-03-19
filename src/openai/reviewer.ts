@@ -4,7 +4,12 @@ import type { ResponseCreateParamsNonStreaming } from 'openai/resources/response
 import { env } from '../config/env.js';
 import type { PullRequestWebhookPayload } from '../types/github.js';
 import type { ReviewInputFile, ReviewResult, ReviewRunContext } from '../types/review.js';
-import { buildReviewInput, buildReviewInstructions } from '../review/prompt.js';
+import {
+  buildQuestionInput,
+  buildQuestionInstructions,
+  buildReviewInput,
+  buildReviewInstructions,
+} from '../review/prompt.js';
 import { parseReviewResult, reviewResultJsonSchema } from '../review/schema.js';
 
 const client = new OpenAI({
@@ -16,7 +21,7 @@ const client = new OpenAI({
   maxRetries: env.openai.maxRetries,
 });
 
-function buildResponseRequest(
+function buildReviewResponseRequest(
   payload: PullRequestWebhookPayload,
   files: ReviewInputFile[],
   context: ReviewRunContext,
@@ -43,6 +48,26 @@ function buildResponseRequest(
   };
 }
 
+function buildQuestionResponseRequest(
+  payload: PullRequestWebhookPayload,
+  files: ReviewInputFile[],
+  context: ReviewRunContext,
+  question: string,
+): ResponseCreateParamsNonStreaming {
+  return {
+    model: env.openai.model,
+    instructions: buildQuestionInstructions(),
+    input: [{
+      role: 'user',
+      content: [{
+        type: 'input_text',
+        text: buildQuestionInput(payload, files, context, question),
+      }],
+    }],
+    max_output_tokens: env.openai.maxOutputTokens,
+  };
+}
+
 function shouldRetryAsStream(error: unknown): boolean {
   if (!error || typeof error !== 'object') {
     return false;
@@ -53,13 +78,9 @@ function shouldRetryAsStream(error: unknown): boolean {
   return maybeError.status === 400 && message.includes('stream must be set to true');
 }
 
-function buildStreamingParams(
-  payload: PullRequestWebhookPayload,
-  files: ReviewInputFile[],
-  context: ReviewRunContext,
-) {
+function buildStreamingParams(params: ResponseCreateParamsNonStreaming) {
   return {
-    ...buildResponseRequest(payload, files, context),
+    ...params,
     stream: true as const,
   };
 }
@@ -99,24 +120,38 @@ export async function reviewPullRequestWithAI(
   files: ReviewInputFile[],
   context: ReviewRunContext,
 ): Promise<ReviewResult> {
-  const params = buildResponseRequest(payload, files, context);
+  const params = buildReviewResponseRequest(payload, files, context);
 
+  return parseReviewResult(await createResponseText(params));
+}
+
+async function createResponseText(params: ResponseCreateParamsNonStreaming): Promise<string> {
   if (env.openai.forceStream) {
-    const stream = client.responses.stream(buildStreamingParams(payload, files, context));
+    const stream = client.responses.stream(buildStreamingParams(params));
     const response = await stream.finalResponse();
-    return parseReviewResult(extractResponseText(response));
+    return extractResponseText(response);
   }
 
   try {
     const response = await client.responses.create(params);
-    return parseReviewResult(extractResponseText(response));
+    return extractResponseText(response);
   } catch (error) {
     if (!shouldRetryAsStream(error)) {
       throw error;
     }
 
-    const stream = client.responses.stream(buildStreamingParams(payload, files, context));
+    const stream = client.responses.stream(buildStreamingParams(params));
     const response = await stream.finalResponse();
-    return parseReviewResult(extractResponseText(response));
+    return extractResponseText(response);
   }
+}
+
+export async function answerPullRequestQuestion(
+  payload: PullRequestWebhookPayload,
+  files: ReviewInputFile[],
+  context: ReviewRunContext,
+  question: string,
+): Promise<string> {
+  const params = buildQuestionResponseRequest(payload, files, context, question);
+  return createResponseText(params);
 }

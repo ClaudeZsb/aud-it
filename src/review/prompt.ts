@@ -19,6 +19,16 @@ export function buildReviewInstructions(minConfidence: number): string {
   ].join('\n');
 }
 
+export function buildQuestionInstructions(): string {
+  return [
+    'You are an experienced software reviewer helping with a GitHub pull request discussion.',
+    'Answer the user question using only the provided pull request metadata, diff, and previous review context.',
+    'If the answer cannot be determined from the provided context, say so clearly.',
+    'Be concise, concrete, and technically precise.',
+    'Do not invent files, line numbers, behavior, or test results that are not present in the provided context.',
+  ].join('\n');
+}
+
 function buildPreviousReviewContext(context: ReviewRunContext): string {
   if (!context.previousReview) {
     return 'PREVIOUS_REVIEW: none';
@@ -82,5 +92,19 @@ export function buildReviewInput(
     '',
     'CHANGED_FILES:',
     fileSections.join('\n\n'),
+  ].join('\n');
+}
+
+export function buildQuestionInput(
+  payload: PullRequestWebhookPayload,
+  files: ReviewInputFile[],
+  context: ReviewRunContext,
+  question: string,
+): string {
+  return [
+    buildReviewInput(payload, files, context),
+    '',
+    'USER_QUESTION:',
+    truncateText(question, 4000),
   ].join('\n');
 }

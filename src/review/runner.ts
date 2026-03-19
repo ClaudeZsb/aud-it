@@ -4,17 +4,19 @@ import {
   compareCommitFiles,
   createPullRequestReview,
   findLatestPersistedReviewState,
-  hasReviewMarker,
   listPullRequestFiles,
 } from '../github/pullRequests.js';
 import { reviewPullRequestWithAI } from '../openai/reviewer.js';
-import type { PullRequestWebhookPayload } from '../types/github.js';
-import type { PullRequestFile } from '../types/github.js';
-import type { PreviousReviewContext, ReviewMode, ReviewRunContext } from '../types/review.js';
+import type { PullRequestFile, PullRequestWebhookPayload } from '../types/github.js';
+import type {
+  PreviousReviewContext,
+  ReviewMode,
+  ReviewResult,
+  ReviewRunContext,
+} from '../types/review.js';
 import { buildReviewInputFiles } from './diff.js';
 import { filterReviewableFiles } from './filter.js';
 import {
-  createReviewMarker,
   formatReviewBody,
   formatSkippedReviewBody,
   selectInlineComments,
@@ -80,39 +82,79 @@ async function resolveReviewFiles(
   };
 }
 
-export async function reviewPullRequestEvent(payload: PullRequestWebhookPayload): Promise<void> {
-  if (!REVIEWABLE_ACTIONS.has(payload.action)) {
-    return;
-  }
+export interface RunPullRequestReviewOptions {
+  force?: boolean;
+  allowDraft?: boolean;
+  enforceBaseBranch?: boolean;
+}
 
-  if (env.review.ignoreDrafts && payload.pull_request.draft) {
-    return;
+export type RunPullRequestReviewResult =
+  | {
+    status: 'ignored';
+    reason: string;
   }
+  | {
+    status: 'duplicate';
+    commitSha: string;
+  }
+  | {
+    status: 'skipped-no-files';
+    commitSha: string;
+    reviewMode: ReviewMode;
+  }
+  | {
+    status: 'reviewed';
+    commitSha: string;
+    reviewMode: ReviewMode;
+    result: ReviewResult;
+  };
 
+export async function runPullRequestReview(
+  payload: PullRequestWebhookPayload,
+  options: RunPullRequestReviewOptions = {},
+): Promise<RunPullRequestReviewResult> {
   if (!payload.installation?.id) {
-    return;
+    return {
+      status: 'ignored',
+      reason: 'missing installation context',
+    };
   }
 
   if (!repoAllowed(payload.repository.full_name)) {
-    return;
+    return {
+      status: 'ignored',
+      reason: 'repository is not allowed by configuration',
+    };
   }
 
-  if (!baseBranchAllowed(payload.pull_request.base.ref)) {
-    return;
+  if ((options.enforceBaseBranch ?? true) && !baseBranchAllowed(payload.pull_request.base.ref)) {
+    return {
+      status: 'ignored',
+      reason: `base branch \`${payload.pull_request.base.ref}\` is not enabled for automatic review`,
+    };
+  }
+
+  if (!options.allowDraft && env.review.ignoreDrafts && payload.pull_request.draft) {
+    return {
+      status: 'ignored',
+      reason: 'draft pull requests are currently ignored',
+    };
   }
 
   const owner = payload.repository.owner.login;
   const repo = payload.repository.name;
   const pullNumber = payload.number;
   const commitSha = payload.pull_request.head.sha;
-  const marker = createReviewMarker(commitSha);
   const octokit = getInstallationOctokit(payload.installation.id);
+  const previousState = await findLatestPersistedReviewState(octokit, owner, repo, pullNumber);
 
-  if (await hasReviewMarker(octokit, owner, repo, pullNumber, marker)) {
-    return;
+  if (!options.force && previousState?.reviewedHeadSha === commitSha) {
+    return {
+      status: 'duplicate',
+      commitSha,
+    };
   }
 
-  const previousState = await findLatestPersistedReviewState(octokit, owner, repo, pullNumber);
   const { files, context } = await resolveReviewFiles(octokit, owner, repo, pullNumber, commitSha, previousState);
   const filtered = filterReviewableFiles(files, env.review.ignorePatterns, env.review.maxFiles);
 
@@ -126,13 +168,17 @@ export async function reviewPullRequestEvent(payload: PullRequestWebhookPayload)
       formatSkippedReviewBody(payload, filtered, commitSha, context.reviewMode),
       [],
     );
-    return;
+    return {
+      status: 'skipped-no-files',
+      commitSha,
+      reviewMode: context.reviewMode,
+    };
   }
 
   const reviewFiles = buildReviewInputFiles(filtered.included, env.review.maxPatchChars);
   const aiResult = await reviewPullRequestWithAI(payload, reviewFiles, context);
   const findings = aiResult.findings.filter((finding) => finding.confidence >= env.review.minConfidence);
-  const result = {
+  const result: ReviewResult = {
     ...aiResult,
     findings,
   };
@@ -150,4 +196,19 @@ export async function reviewPullRequestEvent(payload: PullRequestWebhookPayload)
     formatReviewBody(payload, result, filtered, commitSha, context.reviewMode),
     inlineComments,
   );
+
+  return {
+    status: 'reviewed',
+    commitSha,
+    reviewMode: context.reviewMode,
+    result,
+  };
+}
+
+export async function reviewPullRequestEvent(payload: PullRequestWebhookPayload): Promise<void> {
+  if (!REVIEWABLE_ACTIONS.has(payload.action)) {
+    return;
+  }
+
+  await runPullRequestReview(payload);
 }

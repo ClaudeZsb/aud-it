@@ -1,8 +1,9 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
+import { handleIssueCommentEvent } from '../commands/issueComments.js';
 import { env } from '../config/env.js';
 import { reviewPullRequestEvent } from '../review/runner.js';
-import type { PullRequestWebhookPayload } from '../types/github.js';
+import type { IssueCommentWebhookPayload, PullRequestWebhookPayload } from '../types/github.js';
 
 function verifyGitHubSignature(rawBody: string, signatureHeader: string | undefined): boolean {
   if (!signatureHeader) {
@@ -51,23 +52,37 @@ export async function handleGitHubWebhook(headers: Record<string, string | undef
     };
   }
 
-  if (eventName !== 'pull_request') {
+  if (eventName === 'pull_request') {
+    const payload = JSON.parse(rawBody) as PullRequestWebhookPayload;
+    void reviewPullRequestEvent(payload).catch((error) => {
+      console.error('pull request review failed');
+      console.error(error);
+    });
+
     return {
-      accepted: false,
-      statusCode: 200,
-      message: `Ignored event: ${eventName}`,
+      accepted: true,
+      statusCode: 202,
+      message: 'Review queued',
     };
   }
 
-  const payload = JSON.parse(rawBody) as PullRequestWebhookPayload;
-  void reviewPullRequestEvent(payload).catch((error) => {
-    console.error('pull request review failed');
-    console.error(error);
-  });
+  if (eventName === 'issue_comment') {
+    const payload = JSON.parse(rawBody) as IssueCommentWebhookPayload;
+    void handleIssueCommentEvent(payload).catch((error) => {
+      console.error('issue comment command failed');
+      console.error(error);
+    });
+
+    return {
+      accepted: true,
+      statusCode: 202,
+      message: 'Comment command queued',
+    };
+  }
 
   return {
-    accepted: true,
-    statusCode: 202,
-    message: 'Review queued',
+    accepted: false,
+    statusCode: 200,
+    message: `Ignored event: ${eventName}`,
   };
 }
