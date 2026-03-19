@@ -54,6 +54,13 @@ export interface ReviewRunContext {
   previousReview?: PreviousReviewContext;
 }
 
+export interface ConversationExchange {
+  askedBy: string;
+  prompt: string;
+  reply: string;
+  createdAt?: string;
+}
+
 export interface FilteredFileSet {
   included: import('./github.js').PullRequestFile[];
   ignored: import('./github.js').PullRequestFile[];

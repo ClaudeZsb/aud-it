@@ -3,7 +3,12 @@ import type { ResponseCreateParamsNonStreaming } from 'openai/resources/response
 
 import { env } from '../config/env.js';
 import type { PullRequestWebhookPayload } from '../types/github.js';
-import type { ReviewInputFile, ReviewResult, ReviewRunContext } from '../types/review.js';
+import type {
+  ConversationExchange,
+  ReviewInputFile,
+  ReviewResult,
+  ReviewRunContext,
+} from '../types/review.js';
 import {
   buildQuestionInput,
   buildQuestionInstructions,
@@ -53,6 +58,7 @@ function buildQuestionResponseRequest(
   files: ReviewInputFile[],
   context: ReviewRunContext,
   question: string,
+  history: ConversationExchange[],
 ): ResponseCreateParamsNonStreaming {
   return {
     model: env.openai.model,
@@ -61,7 +67,7 @@ function buildQuestionResponseRequest(
       role: 'user',
       content: [{
         type: 'input_text',
-        text: buildQuestionInput(payload, files, context, question),
+        text: buildQuestionInput(payload, files, context, question, history),
       }],
     }],
     max_output_tokens: env.openai.maxOutputTokens,
@@ -151,7 +157,8 @@ export async function answerPullRequestQuestion(
   files: ReviewInputFile[],
   context: ReviewRunContext,
   question: string,
+  history: ConversationExchange[] = [],
 ): Promise<string> {
-  const params = buildQuestionResponseRequest(payload, files, context, question);
+  const params = buildQuestionResponseRequest(payload, files, context, question, history);
   return createResponseText(params);
 }

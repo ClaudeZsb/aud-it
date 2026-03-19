@@ -60,8 +60,42 @@ export interface IssueCommentWebhookPayload {
     body: string;
     html_url: string;
     user: GitHubActor;
+    author_association?: string;
   };
   sender?: GitHubActor;
+}
+
+export interface PullRequestReviewCommentWebhookPayload {
+  action: string;
+  installation?: GitHubInstallation;
+  repository: GitHubRepository;
+  pull_request: PullRequestDetails;
+  comment: {
+    id: number;
+    body: string;
+    html_url: string;
+    user: GitHubActor;
+    in_reply_to_id?: number;
+    author_association?: string;
+  };
+  sender?: GitHubActor;
+}
+
+export interface IssueComment {
+  id: number;
+  body: string;
+  user: GitHubActor;
+  created_at?: string;
+  author_association?: string;
+}
+
+export interface PullRequestReviewComment {
+  id: number;
+  body: string;
+  user: GitHubActor;
+  in_reply_to_id?: number;
+  created_at?: string;
+  author_association?: string;
 }
 
 export interface PullRequestFile {

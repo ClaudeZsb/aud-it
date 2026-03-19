@@ -1,7 +1,12 @@
 import type { Octokit } from 'octokit';
 
 import { parsePersistedReviewState } from '../review/format.js';
-import type { PullRequestDetails, PullRequestFile } from '../types/github.js';
+import type {
+  IssueComment,
+  PullRequestDetails,
+  PullRequestFile,
+  PullRequestReviewComment,
+} from '../types/github.js';
 import type { InlineReviewComment, PersistedReviewState } from '../types/review.js';
 
 export async function getPullRequest(
@@ -200,4 +205,72 @@ export async function createIssueComment(
     issue_number: issueNumber,
     body,
   });
+}
+
+export async function listIssueComments(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): Promise<IssueComment[]> {
+  const comments = await octokit.paginate(octokit.rest.issues.listComments, {
+    owner,
+    repo,
+    issue_number: issueNumber,
+    per_page: 100,
+  });
+
+  return comments.map((comment) => ({
+    id: comment.id,
+    body: comment.body ?? '',
+    user: {
+      login: comment.user?.login ?? 'unknown',
+      ...(comment.user?.type ? { type: comment.user.type } : {}),
+    },
+    ...(comment.created_at ? { created_at: comment.created_at } : {}),
+    ...(comment.author_association ? { author_association: comment.author_association } : {}),
+  }));
+}
+
+export async function createReviewCommentReply(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  pullNumber: number,
+  commentId: number,
+  body: string,
+): Promise<void> {
+  await octokit.rest.pulls.createReplyForReviewComment({
+    owner,
+    repo,
+    pull_number: pullNumber,
+    comment_id: commentId,
+    body,
+  });
+}
+
+export async function listPullRequestReviewComments(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  pullNumber: number,
+): Promise<PullRequestReviewComment[]> {
+  const comments = await octokit.paginate(octokit.rest.pulls.listReviewComments, {
+    owner,
+    repo,
+    pull_number: pullNumber,
+    per_page: 100,
+  });
+
+  return comments.map((comment) => ({
+    id: comment.id,
+    body: comment.body,
+    user: {
+      login: comment.user?.login ?? 'unknown',
+      ...(comment.user?.type ? { type: comment.user.type } : {}),
+    },
+    ...(comment.in_reply_to_id ? { in_reply_to_id: comment.in_reply_to_id } : {}),
+    ...(comment.created_at ? { created_at: comment.created_at } : {}),
+    ...(comment.author_association ? { author_association: comment.author_association } : {}),
+  }));
 }

@@ -1,5 +1,5 @@
 import type { PullRequestWebhookPayload } from '../types/github.js';
-import type { ReviewInputFile, ReviewRunContext } from '../types/review.js';
+import type { ConversationExchange, ReviewInputFile, ReviewRunContext } from '../types/review.js';
 
 function truncateText(value: string, maxLength: number): string {
   return value.length <= maxLength ? value : `${value.slice(0, maxLength)}...`;
@@ -22,10 +22,25 @@ export function buildReviewInstructions(minConfidence: number): string {
 export function buildQuestionInstructions(): string {
   return [
     'You are an experienced software reviewer helping with a GitHub pull request discussion.',
-    'Answer the user question using only the provided pull request metadata, diff, and previous review context.',
+    'Answer the user question using only the provided pull request metadata, diff, previous review context, and prior conversation history.',
     'If the answer cannot be determined from the provided context, say so clearly.',
     'Be concise, concrete, and technically precise.',
     'Do not invent files, line numbers, behavior, or test results that are not present in the provided context.',
+  ].join('\n');
+}
+
+function buildConversationHistory(history: ConversationExchange[]): string {
+  if (history.length === 0) {
+    return 'CONVERSATION_HISTORY: none';
+  }
+
+  return [
+    'CONVERSATION_HISTORY:',
+    ...history.map((exchange, index) => [
+      `TURN ${index + 1} ASKED_BY: ${exchange.askedBy}`,
+      `TURN ${index + 1} USER: ${truncateText(exchange.prompt, 1200)}`,
+      `TURN ${index + 1} BOT: ${truncateText(exchange.reply, 1800)}`,
+    ].join('\n')),
   ].join('\n');
 }
 
@@ -100,9 +115,12 @@ export function buildQuestionInput(
   files: ReviewInputFile[],
   context: ReviewRunContext,
   question: string,
+  history: ConversationExchange[],
 ): string {
   return [
     buildReviewInput(payload, files, context),
+    '',
+    buildConversationHistory(history),
     '',
     'USER_QUESTION:',
     truncateText(question, 4000),

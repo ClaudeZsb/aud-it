@@ -22,6 +22,9 @@ Optional but recommended:
 
 - `GITHUB_ALLOWED_REPOS=owner/repo`
 - `GITHUB_ALLOWED_BASE_BRANCHES=main`
+- `GITHUB_BOT_HANDLE=aud-it`
+- `GITHUB_ALLOWED_INTERACTORS=your-login`
+- `GITHUB_ALLOWED_AUTHOR_ASSOCIATIONS=OWNER,MEMBER,COLLABORATOR`
 
 If your key is for an OpenAI-compatible provider, also set:
 
@@ -42,6 +45,7 @@ Create a GitHub App with:
 - Subscribe to:
   - `Pull request`
   - `Issue comment`
+  - `Pull request review comment`
 - Webhook URL:
   - local dev tunnel URL + `/webhooks/github`
 - Webhook secret:
@@ -96,9 +100,13 @@ Then paste the public URL into the GitHub App webhook config:
    - one review summary
    - zero or more inline comments
 6. Add a PR conversation comment such as:
-   - `/audit help`
-   - `/audit summary`
-   - `/audit ask what is the riskiest part of this PR?`
+   - `@aud-it help`
+   - `@aud-it summary`
+   - `@aud-it what is the riskiest part of this PR?`
+7. Add an inline review-thread comment such as:
+   - `@aud-it review`
+   - `@aud-it can this change break batch submission?`
+8. Follow up in the same PR conversation or review thread and confirm the bot answer reflects the previous exchange context.
 
 ## Replay a webhook locally
 
@@ -129,5 +137,7 @@ So the effective behavior is `stateful incremental review with full-review fallb
   - `.env` is incomplete
 - delivery accepted but no PR comment appears
   - check app installation permissions
+  - check `GITHUB_BOT_HANDLE` matches the bot mention used in GitHub
+  - check the commenter is allowed by `GITHUB_ALLOWED_INTERACTORS` or `GITHUB_ALLOWED_AUTHOR_ASSOCIATIONS`
   - check allowed repo / allowed base branch filters
   - check local logs for GitHub API or OpenAI API errors

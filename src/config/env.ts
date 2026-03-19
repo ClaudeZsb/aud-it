@@ -91,8 +91,14 @@ export const env = {
     appId: required('GITHUB_APP_ID'),
     privateKey: normalizePrivateKey(),
     webhookSecret: required('GITHUB_WEBHOOK_SECRET'),
+    botHandle: optional('GITHUB_BOT_HANDLE'),
     allowedBaseBranches: parseCsv(optional('GITHUB_ALLOWED_BASE_BRANCHES'), ['main']),
     allowedRepos: parseCsv(optional('GITHUB_ALLOWED_REPOS')),
+    allowedInteractors: parseCsv(optional('GITHUB_ALLOWED_INTERACTORS')).map((login) => login.toLowerCase()),
+    allowedAuthorAssociations: parseCsv(
+      optional('GITHUB_ALLOWED_AUTHOR_ASSOCIATIONS'),
+      ['OWNER', 'MEMBER', 'COLLABORATOR'],
+    ).map((association) => association.toUpperCase()),
   },
   openai: {
     apiKey: required('OPENAI_API_KEY'),

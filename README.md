@@ -5,7 +5,7 @@ A GitHub App webhook service that automatically reviews pull requests targeting 
 ## What it does
 
 - Listens for pull request events from a GitHub App
-- Listens for PR comment commands such as `/audit review` and `/audit ask ...`
+- Lets approved users talk to the bot by mentioning it in the PR conversation or an inline review thread
 - Ignores non-`main` PRs by default
 - Fetches changed files and patches from GitHub
 - Filters low-signal files like lockfiles and build output
@@ -27,6 +27,7 @@ Recommended permissions:
 - Subscribe to events:
   - `Pull request`
   - `Issue comment`
+  - `Pull request review comment`
 
 Set the webhook URL to your deployed bot endpoint:
 
@@ -52,6 +53,12 @@ Advanced OpenAI-compatible configuration is supported too:
 
 This is useful when your key is valid against an OpenAI-compatible provider instead of the default OpenAI API endpoint.
 
+For mention-based interaction and access control, also configure:
+
+- `GITHUB_BOT_HANDLE`
+- `GITHUB_ALLOWED_INTERACTORS`
+- `GITHUB_ALLOWED_AUTHOR_ASSOCIATIONS`
+
 ### 3. Install and run
 
 ```bash
@@ -76,17 +83,25 @@ By default the bot:
 - comments even on clean PRs so the team can see it ran
 - posts inline comments only for high-confidence findings that can be anchored to added lines in the diff
 
-## Comment commands
+## Bot Mentions
 
-In the main PR conversation, the bot also supports:
+Approved users can mention the bot in the main PR conversation or inside an inline review thread:
 
-- `/audit help`
-- `/audit review`
-- `/audit review force`
-- `/audit summary`
-- `/audit ask <question>`
+- `@aud-it review`
+- `@aud-it review force`
+- `@aud-it summary`
+- `@aud-it what is the riskiest part of this PR?`
 
-The `ask` command answers from the current PR diff plus the latest stored review state. This first version supports top-level PR comments, not inline review threads.
+Interaction is gated in two ways:
+
+- explicit login allowlist via `GITHUB_ALLOWED_INTERACTORS`
+- trusted GitHub author associations via `GITHUB_ALLOWED_AUTHOR_ASSOCIATIONS`
+
+By default, only `OWNER`, `MEMBER`, and `COLLABORATOR` can interact.
+
+The bot also carries the latest few exchanges from the same PR conversation or review thread into follow-up answers, so mention-based discussions can stay incremental.
+
+Legacy `/audit ...` commands still work as a fallback, but `@aud-it ...` is now the primary interaction model.
 
 ## Deployment notes
 
