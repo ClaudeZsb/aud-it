@@ -1,0 +1,36 @@
+{
+  "action": "opened",
+  "installation": {
+    "id": 12345678
+  },
+  "repository": {
+    "name": "example-repo",
+    "full_name": "example-org/example-repo",
+    "owner": {
+      "login": "example-org"
+    }
+  },
+  "number": 42,
+  "pull_request": {
+    "number": 42,
+    "title": "Example PR for local webhook testing",
+    "body": "This is a sample payload. Replace it with a real GitHub webhook payload for end-to-end testing.",
+    "html_url": "https://github.com/example-org/example-repo/pull/42",
+    "draft": false,
+    "state": "open",
+    "base": {
+      "ref": "main",
+      "sha": "1111111111111111111111111111111111111111"
+    },
+    "head": {
+      "ref": "feature/example",
+      "sha": "2222222222222222222222222222222222222222",
+      "repo": {
+        "full_name": "example-org/example-repo"
+      }
+    },
+    "user": {
+      "login": "example-user"
+    }
+  }
+}

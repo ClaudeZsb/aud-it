@@ -1,0 +1,29 @@
+{
+  "name": "audit-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "send:webhook": "node scripts/send-webhook.mjs fixtures/pull_request.opened.sample.json"
+  },
+  "dependencies": {
+    "@octokit/auth-app": "^7.1.0",
+    "dotenv": "^16.6.1",
+    "fastify": "^5.2.1",
+    "minimatch": "^10.0.1",
+    "octokit": "^4.1.0",
+    "openai": "^5.10.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.14",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

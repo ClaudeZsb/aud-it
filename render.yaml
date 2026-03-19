@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: aud-it
+    runtime: node
+    plan: free
+    autoDeploy: true
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: GITHUB_APP_ID
+        sync: false
+      - key: GITHUB_PRIVATE_KEY_BASE64
+        sync: false
+      - key: GITHUB_WEBHOOK_SECRET
+        sync: false
+      - key: GITHUB_ALLOWED_REPOS
+        sync: false
+      - key: GITHUB_ALLOWED_BASE_BRANCHES
+        value: main
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_BASE_URL
+        value: https://veriai.chat/v1/
+      - key: OPENAI_ORGANIZATION
+        sync: false
+      - key: OPENAI_PROJECT
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5.4
+      - key: OPENAI_MAX_OUTPUT_TOKENS
+        value: "4000"
+      - key: OPENAI_TIMEOUT_MS
+        value: "120000"
+      - key: OPENAI_MAX_RETRIES
+        value: "2"
+      - key: OPENAI_FORCE_STREAM
+        value: "true"
+      - key: REVIEW_MAX_FILES
+        value: "40"
+      - key: REVIEW_MAX_PATCH_CHARS
+        value: "120000"
+      - key: REVIEW_MAX_INLINE_COMMENTS
+        value: "6"
+      - key: REVIEW_MIN_CONFIDENCE
+        value: "0.72"
+      - key: REVIEW_SUMMARY_ONLY
+        value: "false"
+      - key: REVIEW_COMMENT_ON_CLEAN
+        value: "true"
+      - key: REVIEW_IGNORE_DRAFTS
+        value: "true"
+      - key: REVIEW_IGNORE_PATTERNS
+        value: "**/*.lock,**/package-lock.json,**/pnpm-lock.yaml,**/yarn.lock,**/bun.lockb,**/*.min.js,**/*.map,**/dist/**,**/build/**,**/coverage/**,**/vendor/**,**/node_modules/**"
